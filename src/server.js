@@ -1,13 +1,31 @@
+//server.js
 import Fastify from "fastify"
 import fastifyBasicAuth from "@fastify/basic-auth"
+import process from "process";
 
+import fs from 'node:fs';
+import path from 'node:path'
 
-const port = 3000;
+import { dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const port = 443;
 const authenticate = {realm: 'Westeros'}
 
 const fastify = Fastify({
-    logger: true
-})
+    logger: true,
+    http2: true,
+    https: {
+        allowHTTP1: true,
+        key: fs.readFileSync(path.join(__dirname, '..', 'server.key')),
+        cert: fs.readFileSync(path.join(__dirname, '..', 'server.crt')),
+        passphrase: 'tamer',
+    }
+});
+
+
 
 fastify.register(fastifyBasicAuth, {
     validate,
@@ -25,6 +43,7 @@ fastify.get('/dmz', {}, (req, res) => {
 })
 
 fastify.after(() => {
+    // Route sécurisée /secu
     fastify.route({
         method: 'GET',
         url: '/secu',
@@ -35,7 +54,19 @@ fastify.after(() => {
             }
         }
     })
+
+    // Route non sécurisée /autre
+    fastify.route({
+        method: 'GET',
+        url: '/autre',
+        handler: async (req, reply) => {
+            return {
+                replique: 'Cette route est accessible sans authentification.'
+            }
+        }
+    })
 })
+
 
 fastify.setErrorHandler(function (err, req, reply) {
 
